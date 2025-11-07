@@ -1,149 +1,142 @@
-  import React, { useState } from 'react';
-import { Download, Upload, AlertCircle } from 'lucide-react';
-import './App.css'
+import React, { useState } from 'react';
+import { Download, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 
-function App() {
+export default function App() {
+  const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/1JzyJH6hlZVFA-9CexvrMX8TsPSrmBsculL-TN4WvPN4/edit?gid=0#gid=0');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
-  const [products, setProducts] = useState([
-    {
-      name: 'Hierba de San Juan',
-      format: 'Polvo orgánico',
-      description: 'Desde tiempos antiguos, la Hierba de San Juan ha sido recolectada en el solsticio, cuando los velos entre mundos se vuelven más delgados...',
-      benefits: 'TÓNICO NERVIOSO, EQUILIBRIO EMOCIONAL, COMBATE LA TRISTEZA, PIEL SANA Y LUMINOSA...',
-      posology: '',
-      ingredients: 'Hypericum Perforatum',
-      category: 'Nuestras Plantas',
-      subcategory: 'Guías ancestrales',
-      weight: '50g',
-      volume: '',
-      price: '',
-      images: ''
-    }
-  ]);
-
-  const [showInstructions, setShowInstructions] = useState(true);
-
-  const addProduct = () => {
-    setProducts([...products, {
-      name: '',
-      format: '',
-      description: '',
-      benefits: '',
-      posology: '',
-      ingredients: '',
-      category: '',
-      subcategory: '',
-      weight: '',
-      volume: '',
-      price: '',
-      images: ''
-    }]);
+  const extractSheetId = (url) => {
+    const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : null;
   };
 
-  const updateProduct = (index, field, value) => {
-    const newProducts = [...products];
-    newProducts[index][field] = value;
-    setProducts(newProducts);
+  const extractGid = (url) => {
+    const match = url.match(/[#&]gid=([0-9]+)/);
+    return match ? match[1] : '0';
   };
 
-  const removeProduct = (index) => {
-    const newProducts = products.filter((_, i) => i !== index);
-    setProducts(newProducts);
-  };
+  const loadFromGoogleSheets = async () => {
+    setLoading(true);
+    setError('');
+    setSuccess('');
 
-  const loadFromGoogleSheets = () => {
-    const sampleData = [
-      {
-        name: 'Hierba de San Juan',
-        format: 'Polvo orgánico',
-        description: 'Desde tiempos antiguos, la Hierba de San Juan ha sido recolectada en el solsticio, cuando los velos entre mundos se vuelven más delgados. Médicos como Hipócrates la reconocían, pero su historia es aún más profunda: se creía que alejaba los malos espíritus, y muchas culturas la usaban como un talismán contra la tristeza. Sus compuestos naturales son aliados del sistema nervioso, y ayudan a levantar el ánimo. Antiguamente mágica, hoy respaldada por la ciencia, es una aliada para quien busca claridad y equilibrio emocional.',
-        benefits: 'TÓNICO NERVIOSO, EQUILIBRIO EMOCIONAL, COMBATE LA TRISTEZA, PIEL SANA Y LUMINOSA, ASTRINGENTE, TRATAMIENTO DE ADICCIONES, ANTIMICÓTICO Y ANTIBACTERIANO, MEJORA EL ESTADO DE ÁNIMO, AYUDA CONTRA EL INSOMNIO, AUMENTA LA SEROTONINA',
-        posology: '',
-        ingredients: 'Hypericum Perforatum',
-        category: 'Nuestras Plantas',
-        subcategory: 'Guías ancestrales',
-        weight: '50g',
-        volume: '',
-        price: '',
-        images: ''
-      },
-      {
-        name: 'Artemisia',
-        format: 'Polvo orgánico',
-        description: 'En los jardines de la medicina china, la Artemisa Annua ha florecido por milenios como un tesoro. Su compuesto activo, la artemisinina, es hoy una de las armas más potentes contra la malaria, y ha sido adoptada por la ciencia moderna como una cura de impacto global. Pero su poder va más allá. Esta planta silvestre combate virus y bacterias resistentes, limpia al organismo de parásitos, regula los ciclos femeninos y protege los pulmones. Incluso fue investigada como parte del tratamiento contra el covid, confirmando lo que las tradiciones ya sabían: en la Artemisa vive una inteligencia sanadora, precisa y fuerte.',
-        benefits: 'APOYO EN COVID, ANTIINFLAMATORIO, TRATA LA MALARIA, EQUILIBRIO HORMONAL, ANTIBACTERIANO, POTENTE ANTIPARASITARIO, COMBATE INFECCIONES RESISTENTES, PURIFICA EL CUERPO, REGULA EL CICLO MENSTRUAL, COMBATE INFECCIONES PULMONARES',
-        posology: '',
-        ingredients: 'ARTEMISA ANNUA',
-        category: 'Nuestras Plantas',
-        subcategory: 'Guías ancestrales',
-        weight: '50g',
-        volume: '',
-        price: '',
-        images: ''
-      },
-      {
-        name: 'Tepezcohuite',
-        format: 'Polvo orgánico',
-        description: 'Desde tiempos ancestrales, este árbol ha sido venerado en México como un regalo de la selva. Su corteza —nuestra fuente principal— tiene el poder de cerrar heridas como si la tierra misma tejiera la piel con sus hilos invisibles. Considerado un árbol milagroso, sus propiedades antibacterianas y regenerativas lo han convertido en un tesoro. Los mayas lo utilizan también por vía interna, para restaurar el tracto digestivo. Es una medicina sabia, profunda, que entiende la piel, las entrañas y la energía vital. Ayuda al cuerpo a sanar desde la raíz.',
-        benefits: 'ANTIBIÓTICO NATURAL, REGENERADOR CELULAR, COMBATE LA CÁNDIDA, CICATRIZANTE PROFUNDO, ALIADO EN ÚLCERAS, UTILIZADO PARA TRATAR LA AMEBIASIS, REPARA Y LIMPIA EL TRACTO INTESTINAL, USADO EN MASCARILLAS FACIALES, MUY UTILIZADO EN QUEMADURAS, POTENTE EFECTO ANTIFÚNGICO',
-        posology: '',
-        ingredients: 'MIMOSA TENUIFLORA',
-        category: 'Nuestras Plantas',
-        subcategory: 'Guías ancestrales',
-        weight: '50g',
-        volume: '',
-        price: '',
-        images: ''
-      },
-      {
-        name: 'Aceite de Neem',
-        format: 'Aceite orgánico',
-        description: 'Extraído de las semillas del árbol de Neem por prensado en frío, este aceite ha sido utilizado durante siglos en el Ayurveda y la Medicina China para sanar la piel, cerrar heridas y repeler insectos. Su aroma profundo guarda una farmacia vegetal que calma la inflamación, alivia picaduras, nutre la piel sensible y actúa como barrera natural contra bacterias y hongos. No se recomienda su ingesta, pero su uso tópico es una medicina fuerte y poderosa. Versátil y fácil de utilizar, el aceite de Neem es indispensable en el botiquín.',
-        benefits: 'FUERTE ANTIBACTERIAL, ANTIINFLAMATORIO, ALIVIA EL ACNÉ, REPELE INSECTOS, ANTICONCEPTIVO, AYUDA A LA CICATRIZACIÓN DE HERIDAS, REDUCE LAS MANCHAS CUTÁNEAS, POTENTE ANTIFÚNGICO NATURAL, FORTALECE Y REVITALIZA EL CABELLO, TRATA VARIOS TIPOS DE ECCEMA',
-        posology: '',
-        ingredients: 'AZADIRACHTA INDICA',
-        category: 'Salud digestiva',
-        subcategory: 'Detox',
-        weight: '',
-        volume: '30ml',
-        price: '',
-        images: ''
-      },
-      {
-        name: 'Be Pure',
-        format: 'Be Pure',
-        description: 'BePure es una de esas medicinas esenciales, simples y poderosas. El oxígeno, base de la vida en la Tierra, también es uno de los agentes más efectivos para limpiar, desinfectar y vitalizar. Usada correctamente, esta fórmula al 3% puede aplicarse externamente para desinfectar heridas, aliviar infecciones y limpiar la piel, o internamente en protocolos supervisados para oxigenar el organismo. En la cocina, sirve para desinfectar frutas y verduras de forma segura. IZUN pone al alcance una herramienta antigua y moderna para depurar, oxigenar y sentirte más vital.',
-        benefits: 'DESINFECTA HERIDAS, ELIMINA BACTERIAS, POTENTE ANTIFÚNGICO, DESINFECTANTE TÓPICO, VERSÁTIL ANTIVIRAL, REDUCE INFECCIONES DE GARGANTA, EXCELENTE PARA ENJUAGUES BUCALES, DESINFECTA FRUTAS Y VERDURAS, OXIGENA EL CUERPO A NIVEL CELULAR, GRAN ALIADO EN CASO DE GINGIVITIS',
-        posology: '',
-        ingredients: 'PERÓXIDO DE HIDRÓGENO AL 3%',
-        category: 'Salud digestiva',
-        subcategory: 'Detox',
-        weight: '',
-        volume: '250ml',
-        price: '',
-        images: ''
-      },
-      {
-        name: 'Tónico Restaurativo',
-        format: 'Tintura orgánica',
-        description: 'Este tónico es un rescate natural para el cuerpo debilitado. El Muicle, medicina tradicional mexicana, ha sido usado para tratar dengue, anemia e infecciones virales gracias a su capacidad de regenerar la sangre e incrementar las plaquetas. Combinado con Moringa, Ortiga y Alfalfa, plantas ricas en minerales y clorofila, esta fórmula fortalece, remineraliza y devuelve el equilibrio interno tras períodos de agotamiento o enfermedad. Pura vitalidad para revertir la anemia y las deficiencias minerales de forma simple y natural. Un tónico para volver a ti, más fuerte, más vital, más tú.',
-        benefits: 'TÓNICO CIRCULATORIO, AUMENTA LA VITALIDAD, REDUCE LA ANEMIA, BAJA LA FIEBRE, NIVELA EL COLESTEROL, REMINERALIZANTE COMPLETO NATURAL, APOYA LA RECUPERACIÓN POST VIRAL, MEJORA LA OXIGENACIÓN CELULAR, AUMENTA LAS PLAQUETAS, POSEE HIERRO, CLOROFILA Y MINERALES',
-        posology: '',
-        ingredients: 'Muicle, moringa, ortiga, alfalfa',
-        category: 'Salud digestiva',
-        subcategory: 'Detox',
-        weight: '',
-        volume: '30ml',
-        price: '',
-        images: ''
+    try {
+      const sheetId = extractSheetId(sheetUrl);
+      const gid = extractGid(sheetUrl);
+      
+      if (!sheetId) {
+        throw new Error('URL de Google Sheets no válida');
       }
-    ];
-    setProducts(sampleData);
+
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
+      
+      const response = await fetch(csvUrl);
+      if (!response.ok) {
+        throw new Error('No se pudo acceder al Google Sheets. Asegúrate de que sea público.');
+      }
+
+      const csvText = await response.text();
+      
+      // Parser CSV mejorado que maneja saltos de línea dentro de comillas
+      const parseCSV = (text) => {
+        const rows = [];
+        let currentRow = [];
+        let currentCell = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < text.length; i++) {
+          const char = text[i];
+          const nextChar = text[i + 1];
+          
+          if (char === '"' && nextChar === '"' && inQuotes) {
+            // Comillas dobles escapadas
+            currentCell += '"';
+            i++; // Skip next quote
+          } else if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            currentRow.push(currentCell.trim());
+            currentCell = '';
+          } else if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && nextChar === '\n') {
+              i++; // Skip \n in \r\n
+            }
+            if (currentCell || currentRow.length > 0) {
+              currentRow.push(currentCell.trim());
+              if (currentRow.some(cell => cell)) {
+                rows.push(currentRow);
+              }
+              currentRow = [];
+              currentCell = '';
+            }
+          } else {
+            currentCell += char;
+          }
+        }
+        
+        // Add last cell and row
+        if (currentCell || currentRow.length > 0) {
+          currentRow.push(currentCell.trim());
+          if (currentRow.some(cell => cell)) {
+            rows.push(currentRow);
+          }
+        }
+        
+        return rows;
+      };
+      
+      const rows = parseCSV(csvText);
+      
+      // Saltar la primera línea (headers)
+      const dataRows = rows.slice(1);
+      
+      const parsedProducts = dataRows.map(values => {
+
+        // Mapear columnas según estructura: SKU, Nombre, Formato, Descripción, Beneficios, Posología, Ingredientes, Categoría, Subcategoría, Peso, Volumen, Precio, Imágenes, Estado
+        return {
+          sku: values[0] || '',
+          name: values[1] || '',
+          format: values[2] || '',
+          description: values[3] || '',
+          benefits: values[4] || '',
+          posology: values[5] || '',
+          ingredients: values[6] || '',
+          category: values[7] || '',
+          subcategory: values[8] || '',
+          weight: values[9] || '',
+          volume: values[10] || '',
+          price: values[11] || '',
+          images: values[12] || '',
+          status: values[13] || 'publish'
+        };
+      }).filter(p => {
+        // Filtrar filas que tengan al menos nombre (campo más importante)
+        return p.name && p.name.trim() !== '';
+      });
+
+      setProducts(parsedProducts);
+      setSuccess(`✅ ${parsedProducts.length} productos cargados exitosamente`);
+      
+    } catch (err) {
+      setError(`Error: ${err.message}`);
+      console.error('Error al cargar:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const generateCSV = () => {
+  const generateWooCommerceCSV = () => {
+    if (products.length === 0) {
+      setError('Primero carga los productos desde Google Sheets');
+      return;
+    }
+
     const headers = [
       'Type',
+      'SKU',
       'Name',
       'Published',
       'Categories',
@@ -169,11 +162,13 @@ function App() {
         : p.category;
       
       const weightOrVolume = p.volume || p.weight;
+      const published = p.status === 'publish' ? '1' : '0';
 
       return [
         'simple',
+        p.sku,
         p.name,
-        '1',
+        published,
         category,
         p.description,
         p.benefits,
@@ -194,249 +189,189 @@ function App() {
 
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ...rows.map(row => row.map(cell => {
+        const cellStr = String(cell).replace(/"/g, '""');
+        return `"${cellStr}"`;
+      }).join(','))
     ].join('\n');
 
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'productos-woocommerce.csv';
+    link.download = `izun-woocommerce-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
+
+    setSuccess(`✅ CSV descargado: ${products.length} productos exportados`);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-6">
-          <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-emerald-800 mb-2">
-                Convertidor IZUN → WooCommerce
+              <h1 className="text-4xl font-bold text-emerald-800 mb-2">
+                🌿 Convertidor Automático IZUN
               </h1>
-              <p className="text-gray-600">
-                Convierte tus productos al formato CSV de WooCommerce
+              <p className="text-gray-600 text-lg">
+                Importación directa desde Google Sheets → WooCommerce CSV
               </p>
             </div>
-            <button
-              onClick={() => setShowInstructions(!showInstructions)}
-              className="px-4 py-2 bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition"
-            >
-              {showInstructions ? 'Ocultar' : 'Ver'} Instrucciones
-            </button>
           </div>
 
-          {showInstructions && (
-                          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
-              <div className="flex">
-                <AlertCircle className="h-5 w-5 text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <h3 className="font-bold mb-2">Instrucciones:</h3>
-                  <ol className="list-decimal ml-4 space-y-1">
-                    <li>Haz clic en "Cargar datos de Google Sheets" para precargar tus 6 productos</li>
-                    <li>Completa los campos faltantes: <strong>Precio</strong> y <strong>URLs de imágenes</strong></li>
-                    <li>Para imágenes: sube primero las fotos a WordPress (Medios → Añadir nuevo) y copia las URLs</li>
-                    <li>Múltiples imágenes se separan con coma: <code>url1.jpg, url2.jpg</code></li>
-                    <li>Los atributos (Formato, Ingredientes, Posología) ya están incluidos automáticamente</li>
-                    <li>Haz clic en "Descargar CSV" cuando termines</li>
-                    <li>En WordPress: WooCommerce → Productos → Importar → Sube el CSV</li>
-                  </ol>
+          {/* Instrucciones */}
+          <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border-l-4 border-blue-400 p-5 rounded-lg mt-6">
+            <div className="flex">
+              <AlertCircle className="h-6 w-6 text-blue-500 mr-3 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-900">
+                <h3 className="font-bold text-lg mb-3">📋 Cómo usar esta herramienta:</h3>
+                <ol className="list-decimal ml-5 space-y-2">
+                  <li><strong>Pega la URL</strong> de tu Google Sheets público (ya está precargada)</li>
+                  <li><strong>Haz clic en "Cargar desde Google Sheets"</strong> - Lee automáticamente todos los productos</li>
+                  <li><strong>Revisa los productos cargados</strong> en la tabla de abajo</li>
+                  <li><strong>Descarga el CSV</strong> listo para WooCommerce</li>
+                  <li><strong>Importa en WordPress:</strong> WooCommerce → Productos → Importar</li>
+                </ol>
+                <div className="mt-4 p-3 bg-white rounded-lg border border-blue-200">
+                  <p className="font-semibold text-blue-800">💡 Ventajas:</p>
+                  <ul className="list-disc ml-5 mt-2 space-y-1">
+                    <li>✅ Lee automáticamente hasta 150+ productos</li>
+                    <li>✅ SKU único evita duplicados al reimportar</li>
+                    <li>✅ Actualiza precios/imágenes sin crear productos nuevos</li>
+                    <li>✅ Atributos (Formato, Ingredientes, Posología) incluidos</li>
+                  </ul>
                 </div>
               </div>
             </div>
-          )}
-
-          <div className="flex gap-4 mb-6">
-            <button
-              onClick={loadFromGoogleSheets}
-              className="flex items-center gap-2 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-md"
-            >
-              <Upload className="h-5 w-5" />
-              Cargar datos de Google Sheets
-            </button>
-            <button
-              onClick={addProduct}
-              className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-            >
-              + Agregar Producto
-            </button>
-            <button
-              onClick={generateCSV}
-              className="flex items-center gap-2 px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition shadow-md ml-auto"
-            >
-              <Download className="h-5 w-5" />
-              Descargar CSV para WooCommerce
-            </button>
           </div>
         </div>
 
-        <div className="space-y-6">
-          {products.map((product, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-emerald-800">
-                  Producto {index + 1}
-                </h3>
-                <button
-                  onClick={() => removeProduct(index)}
-                  className="px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition"
-                >
-                  Eliminar
-                </button>
-              </div>
+        {/* Input y botones */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <label className="block text-sm font-bold text-gray-700 mb-3">
+            URL de Google Sheets (debe ser público):
+          </label>
+          <div className="flex gap-4">
+            <input
+              type="text"
+              value={sheetUrl}
+              onChange={(e) => setSheetUrl(e.target.value)}
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+            />
+            <button
+              onClick={loadFromGoogleSheets}
+              disabled={loading}
+              className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition shadow-lg disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                  Cargando...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-5 w-5" />
+                  Cargar desde Google Sheets
+                </>
+              )}
+            </button>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Nombre del producto *
-                  </label>
-                  <input
-                    type="text"
-                    value={product.name}
-                    onChange={(e) => updateProduct(index, 'name', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Formato
-                  </label>
-                  <input
-                    type="text"
-                    value={product.format}
-                    onChange={(e) => updateProduct(index, 'format', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Descripción extendida
-                  </label>
-                  <textarea
-                    value={product.description}
-                    onChange={(e) => updateProduct(index, 'description', e.target.value)}
-                    rows="4"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-white mb-1">
-                    Beneficios (descripción corta)
-                  </label>
-                  <textarea
-                    value={product.benefits}
-                    onChange={(e) => updateProduct(index, 'benefits', e.target.value)}
-                    rows="3"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Ingredientes
-                  </label>
-                  <input
-                    type="text"
-                    value={product.ingredients}
-                    onChange={(e) => updateProduct(index, 'ingredients', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Posología (opcional)
-                  </label>
-                  <input
-                    type="text"
-                    value={product.posology}
-                    onChange={(e) => updateProduct(index, 'posology', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Categoría
-                  </label>
-                  <input
-                    type="text"
-                    value={product.category}
-                    onChange={(e) => updateProduct(index, 'category', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Subcategoría
-                  </label>
-                  <input
-                    type="text"
-                    value={product.subcategory}
-                    onChange={(e) => updateProduct(index, 'subcategory', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Peso (ej: 50g)
-                  </label>
-                  <input
-                    type="text"
-                    value={product.weight}
-                    onChange={(e) => updateProduct(index, 'weight', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Volumen (ej: 30ml)
-                  </label>
-                  <input
-                    type="text"
-                    value={product.volume}
-                    onChange={(e) => updateProduct(index, 'volume', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    Precio * (solo número, ej: 1500)
-                  </label>
-                  <input
-                    type="text"
-                    value={product.price}
-                    onChange={(e) => updateProduct(index, 'price', e.target.value)}
-                    placeholder="1500"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">
-                    URLs de imágenes * (separadas por coma)
-                  </label>
-                  <input
-                    type="text"
-                    value={product.images}
-                    onChange={(e) => updateProduct(index, 'images', e.target.value)}
-                    placeholder="https://tusitioweb.com/imagen1.jpg, https://tusitioweb.com/imagen2.jpg"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
+          {/* Mensajes */}
+          {error && (
+            <div className="mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded">
+              <p className="text-red-700 font-semibold">{error}</p>
             </div>
-          ))}
+          )}
+
+          {success && (
+            <div className="mt-4 p-4 bg-green-50 border-l-4 border-green-500 rounded flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-500 mr-3" />
+              <p className="text-green-700 font-semibold">{success}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Tabla de productos */}
+        {products.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-emerald-800">
+                📦 Productos Cargados ({products.length})
+              </h2>
+              <button
+                onClick={generateWooCommerceCSV}
+                className="flex items-center gap-2 px-8 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition shadow-lg font-semibold"
+              >
+                <Download className="h-5 w-5" />
+                Descargar CSV WooCommerce
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-emerald-100">
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">SKU</th>
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">Nombre</th>
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">Categoría</th>
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">Precio</th>
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">Peso/Vol</th>
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">Imágenes</th>
+                    <th className="border border-emerald-200 px-4 py-3 text-left font-bold text-emerald-900">Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((product, index) => (
+                    <tr key={index} className="hover:bg-emerald-50 transition">
+                      <td className="border border-gray-200 px-4 py-3 font-mono text-sm">{product.sku}</td>
+                      <td className="border border-gray-200 px-4 py-3 font-semibold">{product.name}</td>
+                      <td className="border border-gray-200 px-4 py-3 text-sm">
+                        {product.subcategory ? `${product.category} > ${product.subcategory}` : product.category}
+                      </td>
+                      <td className="border border-gray-200 px-4 py-3">
+                        {product.price ? (
+                          <span className="text-green-600 font-bold">${product.price}</span>
+                        ) : (
+                          <span className="text-red-500 text-sm">Sin precio</span>
+                        )}
+                      </td>
+                      <td className="border border-gray-200 px-4 py-3 text-sm">{product.volume || product.weight}</td>
+                      <td className="border border-gray-200 px-4 py-3 text-sm">
+                        {product.images ? (
+                          <span className="text-blue-600">✓ Con imágenes</span>
+                        ) : (
+                          <span className="text-orange-500">⚠ Sin imágenes</span>
+                        )}
+                      </td>
+                      <td className="border border-gray-200 px-4 py-3">
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          product.status === 'publish' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {product.status === 'publish' ? 'Publicar' : 'Borrador'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Footer con tips */}
+        <div className="bg-gradient-to-r from-emerald-700 to-teal-700 rounded-2xl shadow-xl p-6 text-white">
+          <h3 className="font-bold text-lg mb-3">💡 Tips importantes:</h3>
+          <ul className="space-y-2 text-sm">
+            <li>✅ <strong>Para actualizar productos:</strong> Mantén los mismos SKUs y reimporta el CSV</li>
+            <li>✅ <strong>Campos vacíos:</strong> Si faltan precios o imágenes, complétalos en Google Sheets y recarga</li>
+            <li>✅ <strong>Nuevos productos:</strong> Agrégalos a Google Sheets con SKU único y recarga</li>
+            <li>✅ <strong>Estado "draft":</strong> Los productos no se publican hasta que cambies a "publish"</li>
+          </ul>
         </div>
       </div>
     </div>
   );
 }
-
-export default App
