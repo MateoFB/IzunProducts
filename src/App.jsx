@@ -257,7 +257,7 @@ export default function App() {
               type="text"
               value={sheetUrl}
               onChange={(e) => setSheetUrl(e.target.value)}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-black"
               placeholder="https://docs.google.com/spreadsheets/d/..."
             />
             <button
@@ -296,7 +296,7 @@ export default function App() {
 
         {/* Tabla de productos */}
         {products.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 text-black">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-emerald-800">
                 📦 Productos Cargados ({products.length})
