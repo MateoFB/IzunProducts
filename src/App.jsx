@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Download, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function App() {
-  const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/1JzyJH6hlZVFA-9CexvrMX8TsPSrmBsculL-TN4WvPN4/edit?gid=0#gid=0');
+const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/1JzyJH6hlZVFA-9CexvrMX8TsPSrmBsculL-TN4WvPN4/edit?gid=0#gid=0');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -95,22 +95,23 @@ export default function App() {
       
       const parsedProducts = dataRows.map(values => {
 
-        // Mapear columnas según estructura: SKU, Nombre, Formato, Descripción, Beneficios, Posología, Ingredientes, Categoría, Subcategoría, Peso, Volumen, Precio, Imágenes, Estado
+        // Mapear columnas según estructura: SKU, Nombre, Formato, Descripción, Beneficios, Modos de uso, Composición, Para quién, Categoría, Subcategoría, Peso, Volumen, Precio, Imágenes, Estado
         return {
           sku: values[0] || '',
           name: values[1] || '',
           format: values[2] || '',
           description: values[3] || '',
           benefits: values[4] || '',
-          posology: values[5] || '',
-          ingredients: values[6] || '',
-          category: values[7] || '',
-          subcategory: values[8] || '',
-          weight: values[9] || '',
-          volume: values[10] || '',
-          price: values[11] || '',
-          images: values[12] || '',
-          status: values[13] || 'publish'
+          modesOfUse: values[5] || '',
+          composition: values[6] || '',
+          forWhom: values[7] || '',
+          category: values[8] || '',
+          subcategory: values[9] || '',
+          weight: values[10] || '',
+          volume: values[11] || '',
+          price: values[12] || '',
+          images: values[13] || '',
+          status: values[14] || 'publish'
         };
       }).filter(p => {
         // Filtrar filas que tengan al menos nombre (campo más importante)
@@ -153,7 +154,10 @@ export default function App() {
       'Attribute 2 visible',
       'Attribute 3 name',
       'Attribute 3 value(s)',
-      'Attribute 3 visible'
+      'Attribute 3 visible',
+      'Attribute 4 name',
+      'Attribute 4 value(s)',
+      'Attribute 4 visible'
     ];
 
     const rows = products.map(p => {
@@ -178,12 +182,15 @@ export default function App() {
         'Formato',
         p.format,
         '1',
-        'Ingredientes',
-        p.ingredients,
+        'Composición',
+        p.composition,
         '1',
-        'Posología',
-        p.posology || '',
-        p.posology ? '1' : '0'
+        'Modos de uso',
+        p.modesOfUse || '',
+        p.modesOfUse ? '1' : '0',
+        'Para quién',
+        p.forWhom || '',
+        p.forWhom ? '1' : '0'
       ];
     });
 
@@ -257,7 +264,7 @@ export default function App() {
               type="text"
               value={sheetUrl}
               onChange={(e) => setSheetUrl(e.target.value)}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-black"
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               placeholder="https://docs.google.com/spreadsheets/d/..."
             />
             <button
@@ -296,7 +303,7 @@ export default function App() {
 
         {/* Tabla de productos */}
         {products.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6 text-black">
+          <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-emerald-800">
                 📦 Productos Cargados ({products.length})
