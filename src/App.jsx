@@ -2,11 +2,16 @@ import React, { useState } from 'react';
 import { Download, RefreshCw, AlertCircle, CheckCircle } from 'lucide-react';
 
 export default function App() {
-const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/1JzyJH6hlZVFA-9CexvrMX8TsPSrmBsculL-TN4WvPN4/edit?gid=0#gid=0');
+  const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d/1JzyJH6hlZVFA-9CexvrMX8TsPSrmBsculL-TN4WvPN4/edit?gid=0#gid=0');
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // NEW: WordPress REST API settings (optional)
+  const [wpSiteUrl, setWpSiteUrl] = useState(''); // e.g. https://tudominio.com
+  const [wpAuthUser, setWpAuthUser] = useState(''); // username for application password (optional)
+  const [wpAuthPass, setWpAuthPass] = useState(''); // application password (optional)
 
   const extractSheetId = (url) => {
     const match = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
@@ -18,6 +23,123 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
     return match ? match[1] : '0';
   };
 
+  // Helper: is a plain numeric ID (trimmed)
+  const isNumericId = (s) => {
+    return /^\s*\d+\s*$/.test(String(s));
+  };
+
+  // Resolve single attachment ID via WP REST API
+ // Reemplaza tu función fetchAttachmentUrl por esta versión
+const fetchAttachmentUrl = async (attachmentId, authHeader) => {
+  if (!wpSiteUrl) return null;
+  const url = `${wpSiteUrl.replace(/\/$/, '')}/wp-json/wp/v2/media/${attachmentId}`;
+  try {
+    const headers = {};
+    if (authHeader) headers['Authorization'] = authHeader;
+    const res = await fetch(url, { headers });
+    if (!res.ok) {
+      console.warn(`WP REST: no se pudo obtener media ${attachmentId}: ${res.status}`);
+      return null;
+    }
+    const json = await res.json();
+
+    // 1) Preferir elegir la "size" con mayor width dentro de media_details.sizes (si existe)
+    try {
+      if (json.media_details && json.media_details.sizes && Object.keys(json.media_details.sizes).length > 0) {
+        const sizes = json.media_details.sizes;
+        // convertir a array y buscar el que tenga mayor width
+        const sizeEntries = Object.values(sizes).filter(s => s && s.source_url && s.width);
+        if (sizeEntries.length > 0) {
+          sizeEntries.sort((a, b) => (b.width || 0) - (a.width || 0));
+          // devolver la source_url de la mayor resolución disponible
+          return sizeEntries[0].source_url;
+        }
+      }
+    } catch (e) {
+      // no crítico — seguir al fallback
+      console.warn('Error al inspeccionar media_details.sizes:', e);
+    }
+
+    // 2) Fallback preferente: source_url (suele ser el archivo original)
+    if (json.source_url) return json.source_url;
+
+    // 3) Otros fallbacks: guid.rendered o guid
+    if (json.guid && typeof json.guid === 'object' && json.guid.rendered) return json.guid.rendered;
+    if (json.guid && typeof json.guid === 'string') return json.guid;
+
+    return null;
+  } catch (err) {
+    console.warn('Error fetchAttachmentUrl:', err);
+    return null;
+  }
+};
+
+
+  // Resolve all images fields in products: replace numeric IDs with URLs
+  const resolveImagesForProducts = async (productsList) => {
+    if (!wpSiteUrl) {
+      // nothing to do
+      return productsList;
+    }
+
+    // Prepare auth header if user/pass provided
+    let authHeader = null;
+    if (wpAuthUser && wpAuthPass) {
+      try {
+        // Basic auth required by WP Application Passwords: "Basic base64(user:password)"
+        const token = btoa(`${wpAuthUser}:${wpAuthPass}`);
+        authHeader = `Basic ${token}`;
+      } catch (e) {
+        console.warn('No se pudo construir header auth:', e);
+      }
+    }
+
+    const cache = {}; // id -> url|null
+    const resolvedProducts = [];
+
+    // Iterate products and resolve images
+    for (const p of productsList) {
+      const imagesValue = (p.images || '').trim();
+      if (!imagesValue) {
+        resolvedProducts.push({ ...p });
+        continue;
+      }
+
+      // split by | (pipe) for multiple images
+      const parts = imagesValue.split('|').map(s => s.trim()).filter(Boolean);
+      const newParts = [];
+
+      // resolve sequentially but with cache to avoid duplicates
+      for (const part of parts) {
+        if (isNumericId(part)) {
+          const id = String(part).trim();
+          if (cache.hasOwnProperty(id)) {
+            if (cache[id]) newParts.push(cache[id]);
+            else newParts.push(id); // preserve original if unresolved
+            continue;
+          }
+
+          // attempt to fetch
+          const resolved = await fetchAttachmentUrl(id, authHeader);
+          cache[id] = resolved; // may be null
+          if (resolved) newParts.push(resolved);
+          else {
+            // fallback: keep original id so user can notice it
+            newParts.push(id);
+            console.warn(`Warning: no se pudo resolver attachment ID ${id} (revisar WP REST o credenciales/CORS).`);
+          }
+        } else {
+          // already appears to be a URL or path — keep as is
+          newParts.push(part);
+        }
+      }
+
+      resolvedProducts.push({ ...p, images: newParts.join('|') });
+    }
+
+    return resolvedProducts;
+  };
+
   const loadFromGoogleSheets = async () => {
     setLoading(true);
     setError('');
@@ -26,31 +148,31 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
     try {
       const sheetId = extractSheetId(sheetUrl);
       const gid = extractGid(sheetUrl);
-      
+
       if (!sheetId) {
         throw new Error('URL de Google Sheets no válida');
       }
 
       const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`;
-      
+
       const response = await fetch(csvUrl);
       if (!response.ok) {
         throw new Error('No se pudo acceder al Google Sheets. Asegúrate de que sea público.');
       }
 
       const csvText = await response.text();
-      
+
       // Parser CSV mejorado que maneja saltos de línea dentro de comillas
       const parseCSV = (text) => {
         const rows = [];
         let currentRow = [];
         let currentCell = '';
         let inQuotes = false;
-        
+
         for (let i = 0; i < text.length; i++) {
           const char = text[i];
           const nextChar = text[i + 1];
-          
+
           if (char === '"' && nextChar === '"' && inQuotes) {
             // Comillas dobles escapadas
             currentCell += '"';
@@ -76,7 +198,7 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
             currentCell += char;
           }
         }
-        
+
         // Add last cell and row
         if (currentCell || currentRow.length > 0) {
           currentRow.push(currentCell.trim());
@@ -84,17 +206,16 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
             rows.push(currentRow);
           }
         }
-        
+
         return rows;
       };
-      
+
       const rows = parseCSV(csvText);
-      
+
       // Saltar la primera línea (headers)
       const dataRows = rows.slice(1);
-      
-      const parsedProducts = dataRows.map(values => {
 
+      const parsedProducts = dataRows.map(values => {
         // Mapear columnas según estructura: SKU, Nombre, Formato, Descripción, Beneficios, Modos de uso, Composición, Para quién, Categoría, Subcategoría, Peso, Volumen, Precio, Imágenes, Estado
         return {
           sku: values[0] || '',
@@ -118,9 +239,15 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
         return p.name && p.name.trim() !== '';
       });
 
-      setProducts(parsedProducts);
-      setSuccess(`✅ ${parsedProducts.length} productos cargados exitosamente`);
-      
+      // If wpSiteUrl provided, attempt to resolve numeric IDs -> URLs
+      let finalProducts = parsedProducts;
+      if (wpSiteUrl && wpSiteUrl.trim() !== '') {
+        finalProducts = await resolveImagesForProducts(parsedProducts);
+      }
+
+      setProducts(finalProducts);
+      setSuccess(`✅ ${finalProducts.length} productos cargados exitosamente`);
+
     } catch (err) {
       setError(`Error: ${err.message}`);
       console.error('Error al cargar:', err);
@@ -164,7 +291,7 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
       const category = p.subcategory 
         ? `${p.category} > ${p.subcategory}`
         : p.category;
-      
+
       const weightOrVolume = p.volume || p.weight;
       const published = p.status === 'publish' ? '1' : '0';
 
@@ -235,6 +362,7 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
                 <h3 className="font-bold text-lg mb-3">📋 Cómo usar esta herramienta:</h3>
                 <ol className="list-decimal ml-5 space-y-2">
                   <li><strong>Pega la URL</strong> de tu Google Sheets público (ya está precargada)</li>
+                  <li><strong>Opcional:</strong> Ingresa la URL de tu WordPress y credenciales de Application Password para que IDs de imagen se resuelvan automáticamente.</li>
                   <li><strong>Haz clic en "Cargar desde Google Sheets"</strong> - Lee automáticamente todos los productos</li>
                   <li><strong>Revisa los productos cargados</strong> en la tabla de abajo</li>
                   <li><strong>Descarga el CSV</strong> listo para WooCommerce</li>
@@ -247,6 +375,7 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
                     <li>✅ SKU único evita duplicados al reimportar</li>
                     <li>✅ Actualiza precios/imágenes sin crear productos nuevos</li>
                     <li>✅ Atributos (Formato, Ingredientes, Posología) incluidos</li>
+                    <li>⚠ Si tu WordPress tiene CORS o restricción de REST API, puede que algunos IDs no se resuelvan desde el navegador — en ese caso ejecutá el script en el servidor o usá WP-CLI.</li>
                   </ul>
                 </div>
               </div>
@@ -259,7 +388,7 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
           <label className="block text-sm font-bold text-gray-700 mb-3">
             URL de Google Sheets (debe ser público):
           </label>
-          <div className="flex gap-4">
+          <div className="flex gap-4 mb-4">
             <input
               type="text"
               value={sheetUrl}
@@ -284,6 +413,31 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
                 </>
               )}
             </button>
+          </div>
+
+          {/* NEW: WP REST API inputs */}
+          <div className="grid grid-cols-3 gap-3 mb-3">
+            <input
+              type="text"
+              value={wpSiteUrl}
+              onChange={(e) => setWpSiteUrl(e.target.value)}
+              className="px-4 py-2 border rounded"
+              placeholder="https://tudominio.com (opcional)"
+            />
+            <input
+              type="text"
+              value={wpAuthUser}
+              onChange={(e) => setWpAuthUser(e.target.value)}
+              className="px-4 py-2 border rounded"
+              placeholder="WP usuario App Password (opcional)"
+            />
+            <input
+              type="password"
+              value={wpAuthPass}
+              onChange={(e) => setWpAuthPass(e.target.value)}
+              className="px-4 py-2 border rounded"
+              placeholder="App Password (opcional)"
+            />
           </div>
 
           {/* Mensajes */}
@@ -348,7 +502,12 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
                       <td className="border border-gray-200 px-4 py-3 text-sm">{product.volume || product.weight}</td>
                       <td className="border border-gray-200 px-4 py-3 text-sm">
                         {product.images ? (
-                          <span className="text-blue-600">✓ Con imágenes</span>
+                          // show if contains at least one http url
+                          (String(product.images).includes('http') ? (
+                            <a className="text-blue-600 underline" href={product.images.split('|')[0]} target="_blank" rel="noreferrer">✓ Con imágenes (ver)</a>
+                          ) : (
+                            <span className="text-orange-500">⚠ IDs sin resolver</span>
+                          ))
                         ) : (
                           <span className="text-orange-500">⚠ Sin imágenes</span>
                         )}
@@ -376,6 +535,7 @@ const [sheetUrl, setSheetUrl] = useState('https://docs.google.com/spreadsheets/d
             <li>✅ <strong>Campos vacíos:</strong> Si faltan precios o imágenes, complétalos en Google Sheets y recarga</li>
             <li>✅ <strong>Nuevos productos:</strong> Agrégalos a Google Sheets con SKU único y recarga</li>
             <li>✅ <strong>Estado "draft":</strong> Los productos no se publican hasta que cambies a "publish"</li>
+            <li>⚠ <strong>Nota sobre CORS y REST API:</strong> Si tu WordPress bloquea peticiones desde el navegador (CORS) o la REST API está protegida, algunos IDs no se podrán resolver desde el cliente. En ese caso ejecutá la conversión en el servidor (WP-CLI) o habilitá accesos temporales.</li>
           </ul>
         </div>
       </div>
