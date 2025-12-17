@@ -27,52 +27,51 @@ export default function App() {
   const isNumericId = (s) => {
     return /^\s*\d+\s*$/.test(String(s));
   };
-
   // Resolve single attachment ID via WP REST API
- // Reemplaza tu función fetchAttachmentUrl por esta versión
-const fetchAttachmentUrl = async (attachmentId, authHeader) => {
-  if (!wpSiteUrl) return null;
-  const url = `${wpSiteUrl.replace(/\/$/, '')}/wp-json/wp/v2/media/${attachmentId}`;
-  try {
-    const headers = {};
-    if (authHeader) headers['Authorization'] = authHeader;
-    const res = await fetch(url, { headers });
-    if (!res.ok) {
-      console.warn(`WP REST: no se pudo obtener media ${attachmentId}: ${res.status}`);
+  // Reemplaza tu función fetchAttachmentUrl por esta versión
+  const fetchAttachmentUrl = async (attachmentId, authHeader) => {
+    if (!wpSiteUrl) return null;
+    const url = `${wpSiteUrl.replace(/\/$/, '')}/wp-json/wp/v2/media/${attachmentId}`;
+    try {
+      const headers = {};
+      if (authHeader) headers['Authorization'] = authHeader;
+      const res = await fetch(url, { headers });
+      if (!res.ok) {
+        console.warn(`WP REST: no se pudo obtener media ${attachmentId}: ${res.status}`);
+        return null;
+      }
+      const json = await res.json();
+
+      // 1) Preferir elegir la "size" con mayor width dentro de media_details.sizes (si existe)
+      try {
+        if (json.media_details && json.media_details.sizes && Object.keys(json.media_details.sizes).length > 0) {
+          const sizes = json.media_details.sizes;
+          // convertir a array y buscar el que tenga mayor width
+          const sizeEntries = Object.values(sizes).filter(s => s && s.source_url && s.width);
+          if (sizeEntries.length > 0) {
+            sizeEntries.sort((a, b) => (b.width || 0) - (a.width || 0));
+            // devolver la source_url de la mayor resolución disponible
+            return sizeEntries[0].source_url;
+          }
+        }
+      } catch (e) {
+        // no crítico — seguir al fallback
+        console.warn('Error al inspeccionar media_details.sizes:', e);
+      }
+
+      // 2) Fallback preferente: source_url (suele ser el archivo original)
+      if (json.source_url) return json.source_url;
+
+      // 3) Otros fallbacks: guid.rendered o guid
+      if (json.guid && typeof json.guid === 'object' && json.guid.rendered) return json.guid.rendered;
+      if (json.guid && typeof json.guid === 'string') return json.guid;
+
+      return null;
+    } catch (err) {
+      console.warn('Error fetchAttachmentUrl:', err);
       return null;
     }
-    const json = await res.json();
-
-    // 1) Preferir elegir la "size" con mayor width dentro de media_details.sizes (si existe)
-    try {
-      if (json.media_details && json.media_details.sizes && Object.keys(json.media_details.sizes).length > 0) {
-        const sizes = json.media_details.sizes;
-        // convertir a array y buscar el que tenga mayor width
-        const sizeEntries = Object.values(sizes).filter(s => s && s.source_url && s.width);
-        if (sizeEntries.length > 0) {
-          sizeEntries.sort((a, b) => (b.width || 0) - (a.width || 0));
-          // devolver la source_url de la mayor resolución disponible
-          return sizeEntries[0].source_url;
-        }
-      }
-    } catch (e) {
-      // no crítico — seguir al fallback
-      console.warn('Error al inspeccionar media_details.sizes:', e);
-    }
-
-    // 2) Fallback preferente: source_url (suele ser el archivo original)
-    if (json.source_url) return json.source_url;
-
-    // 3) Otros fallbacks: guid.rendered o guid
-    if (json.guid && typeof json.guid === 'object' && json.guid.rendered) return json.guid.rendered;
-    if (json.guid && typeof json.guid === 'string') return json.guid;
-
-    return null;
-  } catch (err) {
-    console.warn('Error fetchAttachmentUrl:', err);
-    return null;
-  }
-};
+  };
 
 
   // Resolve all images fields in products: replace numeric IDs with URLs
@@ -288,7 +287,7 @@ const fetchAttachmentUrl = async (attachmentId, authHeader) => {
     ];
 
     const rows = products.map(p => {
-      const category = p.subcategory 
+      const category = p.subcategory
         ? `${p.category} > ${p.subcategory}`
         : p.category;
 
@@ -513,9 +512,8 @@ const fetchAttachmentUrl = async (attachmentId, authHeader) => {
                         )}
                       </td>
                       <td className="border border-gray-200 px-4 py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-semibold ${
-                          product.status === 'publish' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                        }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-semibold ${product.status === 'publish' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {product.status === 'publish' ? 'Publicar' : 'Borrador'}
                         </span>
                       </td>
