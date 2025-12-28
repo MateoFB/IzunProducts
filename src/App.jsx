@@ -291,7 +291,7 @@ export default function AutoWooCommerceConverter() {
               type="text"
               value={sheetUrl}
               onChange={(e) => setSheetUrl(e.target.value)}
-              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-black"
               placeholder="https://docs.google.com/spreadsheets/d/..."
             />
             <button
