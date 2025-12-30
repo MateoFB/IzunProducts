@@ -200,8 +200,8 @@ export default function AutoWooCommerceConverter() {
         p.name,
         published,
         allCategories,
-        p.description,
-        p.benefits,
+        p.benefits,        // BENEFICIOS va como Description (descripción larga)
+        p.description,     // DESCRIPCIÓN va como Short description (arriba del producto)
         p.price,
         p.images,
         weightOrVolume,
